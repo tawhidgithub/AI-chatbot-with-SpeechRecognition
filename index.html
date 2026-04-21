@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Local AI Chat</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #0f172a;
+        color: white;
+        display: flex;
+        height: 100vh;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .container {
+        width: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      textarea {
+        height: 120px;
+        padding: 10px;
+        border-radius: 8px;
+        border: none;
+        outline: none;
+        resize: none;
+      }
+
+      button {
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        background: #4f46e5;
+        color: white;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      button:disabled {
+        background: gray;
+        cursor: not-allowed;
+      }
+
+      /* Modal */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal-content {
+        background: #1e293b;
+        padding: 20px;
+        border-radius: 10px;
+        width: 400px;
+        max-height: 70vh;
+        overflow-y: auto;
+      }
+
+      .close {
+        float: right;
+        cursor: pointer;
+        color: red;
+      }
+      .btn-box {
+        display: flex;
+        gap: 5px;
+      }
+      .btn-box .btn {
+        width: 300px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <textarea id="prompt" placeholder="Ask your local AI..."></textarea>
+      <div class="btn-box">
+        <button id="btn" onclick="sendPrompt()">Ask AI</button>
+        <button onclick="startVoice()" id="voiceBtn">🎤 Speak</button>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+      <div class="modal-content">
+        <span class="close" onclick="closeModal()">✖</span>
+        <h3>AI Response</h3>
+        <p id="responseText"></p>
+      </div>
+    </div>
+
+    <script>
+      const btn = document.getElementById("btn");
+
+      async function sendPrompt() {
+        const prompt = document.getElementById("prompt").value;
+
+        if (!prompt) return alert("Write something first 😅");
+
+        btn.disabled = true;
+        btn.innerText = "Thinking... 🤖";
+
+        try {
+          const res = await fetch("http://localhost:3000/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ prompt }),
+          });
+
+          const data = await res.json();
+
+          document.getElementById("responseText").innerText = data.reply;
+
+          document.getElementById("modal").style.display = "flex";
+        } catch (err) {
+          alert("Error talking to AI 😢");
+          console.log(err);
+        }
+
+        btn.disabled = false;
+        btn.innerText = "Ask AI";
+      }
+
+      function closeModal() {
+        document.getElementById("modal").style.display = "none";
+      }
+
+      const voiceBtn = document.getElementById("voiceBtn");
+      const textArea = document.getElementById("prompt");
+
+      function startVoice() {
+        const SpeechRecognition = (
+          window.SpeechRecognition || window.webkitSpeechRecognition
+        )?.bind(window);
+        if (!SpeechRecognition) {
+          alert("Your browser does not support voice input 😢");
+          return;
+        }
+
+        const recognition = new SpeechRecognition();
+
+        recognition.lang = "en-US";
+        recognition.interimResults = false;
+
+        voiceBtn.innerText = "🎙️ Listening...";
+
+        recognition.start();
+
+        recognition.onresult = (event) => {
+          const text = event.results[0][0].transcript;
+          textArea.value = text;
+          sendPrompt();
+        };
+
+        recognition.onerror = (err) => {
+          console.log(err);
+          alert("Voice error occurred");
+        };
+
+        recognition.onend = () => {
+          voiceBtn.innerText = "🎤 Speak";
+        };
+      }
+    </script>
+  </body>
+</html>
